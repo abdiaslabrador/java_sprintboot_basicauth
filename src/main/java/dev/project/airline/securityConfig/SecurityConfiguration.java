@@ -1,10 +1,7 @@
 package dev.project.airline.securityConfig;
+
 import static org.springframework.security.config.Customizer.withDefaults;
 
-import java.util.ArrayList;
-import java.util.Collection;
-
-import dev.project.airline.securityConfig.JpaUserDetailsService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,43 +21,48 @@ public class SecurityConfiguration {
 
     private JpaUserDetailsService jpaUserDetailsService;
 
-    public SecurityConfiguration(JpaUserDetailsService jpaUserDetailsService) {
-        this.jpaUserDetailsService = jpaUserDetailsService;
+    public SecurityConfiguration(JpaUserDetailsService userDetailsService) {
+            this.jpaUserDetailsService = userDetailsService;
+    }
+
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .cors(withDefaults())
-            .csrf(csrf -> csrf.disable())
-            .formLogin(form -> form.disable())
-            .logout(out -> out
-                            .logoutUrl("/api/v1/logout")
-                            .invalidateHttpSession(true)
-                            .deleteCookies("JSESSIONID"))
-            .authorizeHttpRequests( auth -> auth
-            .requestMatchers(AntPathRequestMatcher.antMatcher("/h2-console/**"))
-            .permitAll()
-            .requestMatchers(base_url + "/login").hasAnyRole("USER", "ADMIN")
-                .requestMatchers(base_url + "/airport").permitAll()
-                .requestMatchers( base_url + "/public").permitAll()
-                .requestMatchers(HttpMethod.GET, base_url + "/private").hasRole("USER")
-                .anyRequest().authenticated())
-            .userDetailsService(jpaUserDetailsService)
-            .httpBasic(withDefaults())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
 
-        http.headers(header -> header.frameOptions(frame -> frame.sameOrigin()));
+            http
+                            .cors(withDefaults())
+                            .csrf(csrf -> csrf.disable())
+                            .formLogin(form -> form.disable())
+                            .logout(out -> out
+                                            .logoutUrl(base_url + "/logout")
+                                            .invalidateHttpSession(true)
+                                            .deleteCookies("JSESSIONID"))
+                            .authorizeHttpRequests(auth -> auth
+                                            .requestMatchers(AntPathRequestMatcher.antMatcher("/h2-console/**")).permitAll() //esto es para poder abrir el link de h2 para base de datos
+                                            .requestMatchers(base_url + "/login").hasAnyRole("USER", "ADMIN")// principio de mínimos
+                                            .requestMatchers(base_url).permitAll() 
+                                            .requestMatchers(HttpMethod.GET, base_url + "/users").permitAll()
+                                            .requestMatchers(base_url + "/public").permitAll()
+                                            .requestMatchers(base_url + "/private").hasRole("ADMIN")
+                                            .anyRequest().authenticated())
+                            .userDetailsService(jpaUserDetailsService)
+                            .httpBasic(withDefaults())
+                            .sessionManagement(session -> session
+                                            .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)); //para crear las cookies en el navegador
 
-        return http.build();
+            http.headers(header -> header.frameOptions(frame -> frame.sameOrigin())); //para poder abrir el h2
+
+            return http.build();
 
     }
 
-    // @Bean
-    // PasswordEncoder passwordEncoder(){
-    //     return new BCryptPasswordEncoder();
-    // }
-
+   
+    //estas lineas es para crear usuarios en memoria, es decir; no es necesario tenerlos en la base de datos para hacer login
     // @Bean 
     // public InMemoryUserDetailsManager userDetailsManager(){
     //     UserDetails user = User.builder()

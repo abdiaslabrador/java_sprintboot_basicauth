@@ -13,6 +13,10 @@ public class JpaUserDetailsService implements UserDetailsService{
     
     
     private UserRepository userRepository;
+
+    public JpaUserDetailsService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
     
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
